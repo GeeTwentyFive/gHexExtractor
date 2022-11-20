@@ -1,7 +1,7 @@
 #include <Windows.h>
 #include "gHexExtractor.h"
 #include "GeesWin32Lib.h"
-#define MB_384 402653184	// Could also do MB_64 * 6
+//#define MB_384 402653184
 
 int gHexExtract(const char* target, const char* output) {
 
@@ -32,7 +32,7 @@ int gHexExtract(const char* target, const char* output) {
 
 	CloseHandle(tHandle);
 
-	unsigned char* hexOutput = (unsigned char*)malloc(MB_384);
+	unsigned char* hexOutput = (unsigned char*)malloc((MB_64 * 6) + ((MB_64 / 16) * 2) + 64);	// 6 out chars/1 in byte, and newline+tab every 16 chars, and some extra chars at beginning and end
 	int outSize = 0;
 
 	memcpy(hexOutput, (unsigned char*)"const unsigned char payload[", 28);
@@ -44,10 +44,12 @@ int gHexExtract(const char* target, const char* output) {
 	free(tFileSizeChars);
 	outSize += gNumOfDigits(tFileSize);
 
-	memcpy(hexOutput + outSize, (unsigned char*)"] = {", 5);
-	outSize += 5;
+	memcpy(hexOutput + outSize, (unsigned char*)"] = {\n\t", 7);
+	outSize += 7;
 
+	int byteCount = 0;
 	for (int i = 0; i < tFileSize; i++) {
+		byteCount++;
 		memcpy(hexOutput + outSize, (unsigned char*)"0x", 2);
 		outSize += 2;
 		wsprintfA((LPSTR)hexOutput+outSize, "%02x", input[i]);
@@ -56,11 +58,17 @@ int gHexExtract(const char* target, const char* output) {
 		if (i != tFileSize - 1) {
 			memcpy(hexOutput + outSize, (unsigned char*)", ", 2);
 			outSize += 2;
+
+			if (byteCount >= 15) {
+				memcpy(hexOutput + outSize, (unsigned char*)"\n\t", 2);
+				outSize += 2;
+				byteCount = 0;
+			}
 		}
 	}
 
-	memcpy(hexOutput + outSize, (unsigned char*)"}", 1);
-	outSize += 1;
+	memcpy(hexOutput + outSize, (unsigned char*)"};", 2);
+	outSize += 2;
 
 	free(input);
 
